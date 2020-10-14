@@ -46,9 +46,8 @@ class StoreController extends Controller
 		$this->requireAdmin();
 		$this->requirePostRequest();
 
-		$listId = Craft::$app->getRequest()->getRequiredBodyParam('listId');
-//        $settings = MailchimpCommerce::$i->getSettings();
-//        $listId = Craft::parseEnv($settings->listId);
+		$settings = MailchimpCommerce::$i->getSettings();
+		$listId = Craft::parseEnv($settings->listId) ?? Craft::$app->getRequest()->getRequiredBodyParam('listId');
 
 		$success = MailchimpCommerce::$i->store->create($listId);
 
