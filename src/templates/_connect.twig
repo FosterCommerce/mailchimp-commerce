@@ -13,18 +13,61 @@
 	{% namespace 'settings' %}
 	{{ forms.autosuggestField({
 		first: true,
-		label: 'Mailchimp API Key'|t('mailchimp-commerce'),
+		label: 'Mailchimp API Key (' ~ settings.apiKey ~ ')',
 		instructions: 'Your Mailchimp API key. [About API Keys]({aboutUrl})'|t('mailchimp-commerce', {
 			'aboutUrl': 'https://mailchimp.com/help/about-api-keys/',
 		}),
 		id: 'apiKey',
 		name: 'apiKey',
 		suggestEnvVars: true,
-		value: settings.apiKey,
+		value: '$MAILCHIMP_API_KEY',
 		autofocus: true,
 		required: true,
 		errors: settings.getErrors('apiKey'),
+		readonly: true,
 	}) }}
+	{{ forms.autosuggestField({
+		first: false,
+		label: 'Mailchimp Store ID (' ~ settings.storeId ~ ')',
+		instructions: 'Your Mailchimp Store ID.',
+		id: 'storeId',
+		name: 'storeId',
+		suggestEnvVars: true,
+		value: '$MAILCHIMP_STORE_ID',
+		autofocus: false,
+		required: false,
+		errors: settings.getErrors('storeId'),
+		readonly: true,
+	}) }}
+	{{ forms.autosuggestField({
+		first: false,
+		label: 'Mailchimp Audience ID (' ~ settings.listId ~ ')',
+		instructions: 'Your Audience ID related to your Mailchimp Store.',
+		id: 'listId',
+		name: 'listId',
+		suggestEnvVars: true,
+		value: '$MAILCHIMP_AUDIENCE_ID',
+		autofocus: false,
+		required: false,
+		errors: settings.getErrors('listId'),
+		readonly: true,
+	}) }}
+	{{  forms.lightswitchField({
+		label: "Disable syncing?"|t,
+		instructions: 'Is syncing with Mailchimp turned off?',
+		id: 'disableSyncing',
+		name: 'disableSyncing',
+		value: '$MAILCHIMP_COMMERCE_DISABLE_SYNC',
+		required: false,
+		on: (settings.disableSyncing == "true") ? true : false,
+		readonly: true,
+	})	}}
 	{% endnamespace %}
+	<script>
+		document.querySelector('[id^="settings-apiKey"]').setAttribute('onkeydown', 'return false');
+		document.querySelector('[id^="settings-storeId"]').setAttribute('onkeydown', 'return false');
+		document.querySelector('[id^="settings-listId"]').setAttribute('onkeydown', 'return false');
+		document.querySelector('[id^="settings-disableSyncing"]').setAttribute('onkeydown', 'return false');
+	</script>
 
 {% endblock %}

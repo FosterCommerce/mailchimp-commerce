@@ -237,7 +237,12 @@ class ChimpService extends Component
 		} catch (ClientException $e) {
 			$err = $e->getResponse()->getBody()->getContents();
 
-			Craft::debug(compact('method', 'uri', 'body'));
+			// DEBUG: Catch mailchimp api errors.
+			// https://3.basecamp.com/3091851/buckets/9025087/todos/2578374436
+			Craft::warning('Mailchimp API Error');
+			Craft::warning($err);
+			Craft::warning(compact('method', 'uri', 'body'));
+			// Craft::debug(compact('method', 'uri', 'body'));
 
 			return [
 				false, // Success

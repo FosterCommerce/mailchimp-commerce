@@ -1,5 +1,5 @@
 {
-  "name": "ether/mailchimp-commerce",
+  "name": "FosterCommerce/mailchimp-commerce",
   "description": "Mailchimp integration with Craft Commerce",
   "version": "1.1.11",
   "type": "craft-plugin",
@@ -24,7 +24,7 @@
   },
   "require": {
     "craftcms/cms": "^3.1.0",
-    "craftcms/commerce": "^2.0.0",
+    "craftcms/commerce": "^3.0.0",
     "guzzlehttp/guzzle": "^6.3.3",
     "ext-json": "*"
   },

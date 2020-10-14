@@ -172,11 +172,11 @@ class StoreService extends Component
 		$id = MailchimpCommerce::$i->getSettings()->storeId;
 
 		$storeData = [
-			'id'            => $id,
+			'id'            => 'yqdaGgMRFMBEd6I8vhtDY7o7f3SZK41Z',
 			'platform'      => 'Craft Commerce',
-			'name'          => $this->getStoreName(),
-			'domain'        => $primarySite->getBaseUrl(),
-			'email'         => $this->_getStoreEmail(),
+			'name'          => 'FTI Dev Commerce Store',
+			'domain'        => 'https://dev.facadetectonics.org',
+			'email'         => 'support@fostercommerce.com',
 			'currency_code' => $dummyCart->getPaymentCurrency(),
 		];
 
