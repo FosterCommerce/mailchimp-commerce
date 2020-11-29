@@ -79,11 +79,6 @@ class ProductsService extends Component
 		if (!$this->_hasProductBeenSynced($productId))
 			return;
 
-		Craft::$app->getDb()->createCommand()
-			->delete('{{%mc_products_synced}}', [
-				'productId' => $productId,
-			])->execute();
-
 		$storeId = MailchimpCommerce::$i->getSettings()->storeId;
 
 		list($success, $data, $error) = MailchimpCommerce::$i->chimp->delete(
@@ -95,6 +90,11 @@ class ProductsService extends Component
 			Craft::error($error, 'mailchimp-commerce');
 			return false;
 		}
+
+		Craft::$app->getDb()->createCommand()
+			->delete('{{%mc_products_synced}}', [
+				'productId' => $productId,
+			])->execute();
 
 		return true;
 	}
