@@ -20,6 +20,7 @@ use craft\errors\SiteNotFoundException;
 use craft\helpers\Db;
 use craft\helpers\UrlHelper;
 use DateTime;
+use ether\mc\events\BuildSyncDataEvent;
 use ether\mc\MailchimpCommerce;
 use yii\base\InvalidConfigException;
 use yii\db\Exception;
@@ -32,6 +33,24 @@ use yii\db\Exception;
  */
 class ProductsService extends Component
 {
+
+	// Events
+	// =========================================================================
+
+	/**
+	 * @event BuildSyncDataEvent The event that is triggered after an elements
+	 *        data has been built ready for syncing
+	 *
+	 * Event::on(
+	 *     \ether\mc\services\ProductsService::class,
+	 *     \ether\mc\services\ProductsService::EVENT_AFTER_BUILD_SYNC_DATA,
+	 *     function (\ether\mc\events\BuildSyncDataEvent $event) {
+	 *         $event->element; // The element being synced
+	 *         $event->syncData; // The resulting data to sync
+	 *     }
+	 * );
+	 */
+	const EVENT_AFTER_BUILD_SYNC_DATA = 'mcAfterBuildProductSyncData';
 
 	// Public
 	// =========================================================================
@@ -327,7 +346,13 @@ class ProductsService extends Component
 			];
 		}
 
-		return $data;
+		$event = new BuildSyncDataEvent([
+			'element' => $product,
+			'syncData' => $data,
+		]);
+		$this->trigger(self::EVENT_AFTER_BUILD_SYNC_DATA, $event);
+
+		return $event->syncData;
 	}
 
 	/**
@@ -452,12 +477,13 @@ class ProductsService extends Component
 			$transform = ['width' => 1000, 'mode' => 'fit'];
 
 		return array_map(function (Asset $asset) use ($isVariant, $element, $transform) {
-            $transformId =
-                is_object($transform)
-                    ? spl_object_hash($transform)
-                    : implode('-', array_values($transform));
-            return [
-                'id' => $asset->id . '-' . $element->id . '-' . $transformId,
+			$transformId =
+				is_object($transform)
+					? spl_object_hash($transform)
+					: implode('-', array_values($transform));
+
+			return [
+				'id' => $asset->id . '-' . $element->id . '-' . $transformId,
 				'url' => UrlHelper::siteUrl($asset->getUrl($transform)),
 				'variant_ids' => $isVariant ? [$element->id] : [],
 			];

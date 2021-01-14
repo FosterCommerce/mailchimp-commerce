@@ -1,6 +1,32 @@
-## 1.1.12 - 2019-12-19
+## 1.2.3 - 2020-11-12
 ### Fixed
-- Bump schema version number
+- Fix Composer 2 compatibility (Fixes #39, via @brandonkelly)
+
+## 1.2.2 - 2020-06-15
+### Fixed
+- Fix sync all products' data being null (via @PieterxJan)
+
+## 1.2.1 - 2020-04-15
+### Added
+- Add "After build sync data" event to products, allowing for the manipulation of the data that is synced to Mailchimp (Closes #22)
+
+### Changed
+- Sync jobs will no longer fail if one element errors (but will fail after all other elements have finished syncing) (Fixes #24)
+- Add a clear error log when an element fails to sync
+
+## 1.2.0 - 2020-03-03
+### Changed
+- Now requires Commerce 3 (Closes #27)
+
+### Fixed
+- Fix error when using custom image transform (Fixes #26)
+
+## 1.1.12 - 2019-12-17
+### Changed
+- Bumped schema version
+
+### Fixed
+- Fix deprecation errors when using Commerce ~2.2 (Fixes #21)
 
 ## 1.1.11 - 2019-11-18
 ### Fixed
