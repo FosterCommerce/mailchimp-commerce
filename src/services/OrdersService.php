@@ -19,10 +19,8 @@ use craft\commerce\models\Address;
 use craft\commerce\Plugin as Commerce;
 use craft\helpers\Db;
 use craft\helpers\UrlHelper;
-use DateTime;
 use ether\mc\helpers\AddressHelper;
 use ether\mc\MailchimpCommerce;
-use Throwable;
 use yii\base\InvalidConfigException;
 use yii\db\Exception;
 use yii\db\Query;
@@ -44,7 +42,7 @@ class OrdersService extends Component
 	 *
 	 * @return bool
 	 * @throws InvalidConfigException
-	 * @throws Throwable
+	 * @throws \Throwable
 	 * @throws \yii\base\Exception
 	 */
 	public function syncOrderById($orderId)
@@ -58,20 +56,77 @@ class OrdersService extends Component
 		if ($data === null)
 			return true;
 
-		if ($hasBeenSynced) {
-			if ($this->_updateOrder($order, $data)) {
-				return true;
+		$success = false;
+
+		try {
+			if ($hasBeenSynced) {
+				$this->_updateOrder($order, $data);
 			} else {
-				// Delete the record in mc_synced_orders table.
-				Craft::$app->getDb()->createCommand()
-						->delete('{{%mc_orders_synced}}', [
-							'orderId' => $order->id,
-						])->execute();
+				$this->_createOrder($order, $data);
+			}
+			$success = true;
+		} catch (\Exception $e) {
+			// Nothing to do here
+		}
+
+		// Did that fail? Try the opposite operation
+		if (!$success) {
+			try {
+				if ($hasBeenSynced) {
+					$this->_createOrder($order, $data);
+				} else {
+					$this->_updateOrder($order, $data);
+				}
+				$success = true;
+			} catch (\Exception $e) {
+				// Nothing to do here
 			}
 		}
 
-		// Create order if it has not been synced or the update failed.
-		return $this->_createOrder($order, $data);
+		// Did that fail too? Ok, delete the row from `mc_orders_synced` if there is one and return false
+		if (!$success) {
+			if ($hasBeenSynced) {
+				Craft::$app->getDb()
+					->createCommand()
+					->delete('{{%mc_orders_synced}}', [
+						'orderId' => $order->id,
+					])
+					->execute();
+			}
+			return false;
+		}
+
+		// Update or add row in `mc_orders_synced` and return true
+		if ($hasBeenSynced) {
+			Craft::$app->getDb()
+				->createCommand()
+				->update(
+					'{{%mc_orders_synced}}',
+					[
+						'isCart'     => !$order->isCompleted,
+						'lastSynced' => Db::prepareDateForDb(new \DateTime()),
+					],
+					['orderId' => $order->id],
+					[],
+					false
+				)
+				->execute();
+		} else {
+			Craft::$app->getDb()
+				->createCommand()
+				->insert(
+					'{{%mc_orders_synced}}',
+					[
+						'orderId'    => $order->id,
+						'isCart'     => !$order->isCompleted,
+						'lastSynced' => Db::prepareDateForDb(new \DateTime()),
+					],
+					false
+				)
+				->execute();
+		}
+		
+		return true;
 	}
 
 	/**
@@ -151,21 +206,8 @@ class OrdersService extends Component
 
 		if (!$success) {
 			Craft::error('Create: ' . $error, 'mailchimp-commerce');
-			return false;
+			throw new \Exception($error);
 		}
-
-		Craft::$app->getDb()->createCommand()
-					->insert(
-						'{{%mc_orders_synced}}',
-						[
-							'orderId'    => $order->id,
-							'isCart'     => !$order->isCompleted,
-							'lastSynced' => Db::prepareDateForDb(new DateTime()),
-						],
-						false
-					)->execute();
-
-		return true;
 	}
 
 	/**
@@ -189,22 +231,8 @@ class OrdersService extends Component
 
 		if (!$success) {
 			Craft::error('Update: ' . $error, 'mailchimp-commerce');
-			return false;
+			throw new \Exception($error);
 		}
-
-		Craft::$app->getDb()->createCommand()
-					->update(
-						'{{%mc_orders_synced}}',
-						[
-							'isCart'     => !$order->isCompleted,
-							'lastSynced' => Db::prepareDateForDb(new DateTime()),
-						],
-						['orderId' => $order->id],
-						[],
-						false
-					)->execute();
-
-		return true;
 	}
 
 	// Helpers
@@ -231,7 +259,7 @@ class OrdersService extends Component
 	 * @param $orderId
 	 *
 	 * @return array
-	 * @throws Throwable
+	 * @throws \Throwable
 	 * @throws \yii\base\Exception
 	 * @throws InvalidConfigException
 	 */
