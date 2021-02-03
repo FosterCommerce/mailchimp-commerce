@@ -83,7 +83,37 @@ class OrdersService extends Component
 			}
 		}
 
-		// Did that fail too? Ok, delete the row from `mc_orders_synced` if there is one and return false
+		// Did that fail too? Delete all of this customer's orders from Mailchimp, then delete the customer, and finally try to sync the order from scratch
+		if (!$success) {
+			$storeId = MailchimpCommerce::$i->getSettings()->storeId;
+			list($customerOrdersSuccess, $customerOrdersData, $customerOrdersError) = MailchimpCommerce::$i->chimp->get(
+				'ecommerce/orders',
+				[
+					'customer_id' => (string) $order->customer->id,
+					'count' => 1000,
+				]
+			);
+			if ($customerOrdersSuccess) {
+				foreach ($customerOrdersData['orders'] as $customerOrder) {
+					$this->deleteOrderById($customerOrder['id'], false, false, $customerOrder['store_id']);
+				}
+			} else {
+				Craft::error('[Customer ID: ' . $order->customer->id . '] Get orders: ' . $customerOrdersError, 'mailchimp-commerce');
+			}
+			try {
+				$this->_deleteCustomer($order->customer);
+			} catch (\Exception $e) {
+				// Nothing to do here
+			}
+			try {
+				$this->_createOrder($order, $data);
+				$success = true;
+			} catch (\Exception $e) {
+				// Nothing to do here
+			}
+		}
+
+		// If nothing worked, just delete the row from `mc_orders_synced` if there is one and return false
 		if (!$success) {
 			if ($hasBeenSynced) {
 				Craft::$app->getDb()
@@ -138,24 +168,24 @@ class OrdersService extends Component
 	 * @return bool|void
 	 * @throws Exception
 	 */
-	public function deleteOrderById($orderId, $asCart = false)
+	public function deleteOrderById($orderId, $asCart = false, $onlyIfSynced = true, $storeId = null)
 	{
 		if (MailchimpCommerce::getInstance()->getSettings()->disableSyncing)
 			return;
 
-		if (!$this->_hasOrderBeenSynced($orderId))
+		if ($onlyIfSynced && !$this->_hasOrderBeenSynced($orderId))
 			return;
 
-		$storeId = MailchimpCommerce::$i->getSettings()->storeId;
+		$storeId = $storeId ?? MailchimpCommerce::$i->getSettings()->storeId;
 		$order = Commerce::getInstance()->getOrders()->getOrderById($orderId);
-		$type = $asCart || !$order->isCompleted ? 'carts' : 'orders';
+		$type = $asCart || ($order && !$order->isCompleted) ? 'carts' : 'orders';
 
 		list($success, $data, $error) = MailchimpCommerce::$i->chimp->delete(
 			'ecommerce/stores/' . $storeId . '/' . $type . '/' . $orderId
 		);
 
 		if (!$success) {
-			Craft::error($error, 'mailchimp-commerce');
+			Craft::error('[Order ID: ' . $orderId . '] Delete: ' . $error, 'mailchimp-commerce');
 			return false;
 		}
 
@@ -191,7 +221,6 @@ class OrdersService extends Component
 	 * @param Order $order
 	 * @param $data
 	 *
-	 * @return bool
 	 * @throws Exception
 	 */
 	private function _createOrder(Order $order, $data)
@@ -205,7 +234,7 @@ class OrdersService extends Component
 		);
 
 		if (!$success) {
-			Craft::error('Create: ' . $error, 'mailchimp-commerce');
+			Craft::error('[Order ID: ' . $order->id . '] Create: ' . $error, 'mailchimp-commerce');
 			throw new \Exception($error);
 		}
 	}
@@ -213,10 +242,9 @@ class OrdersService extends Component
 	/**
 	 * Updates the given cart/order in Mailchimp
 	 *
-	 * @param $order
+	 * @param Order $order
 	 * @param $data
 	 *
-	 * @return bool
 	 * @throws Exception
 	 */
 	private function _updateOrder($order, $data)
@@ -230,10 +258,32 @@ class OrdersService extends Component
 		);
 
 		if (!$success) {
-			Craft::error('Update: ' . $error, 'mailchimp-commerce');
+			Craft::error('[Order ID: ' . $order->id . '] Update: ' . $error, 'mailchimp-commerce');
 			throw new \Exception($error);
 		}
 	}
+
+	/**
+	 * Deletes the given customer in Mailchimp
+	 *
+	 * @param Customer $customer
+	 *
+	 * @throws Exception
+	 */
+	private function _deleteCustomer($customer)
+	{
+		$storeId = MailchimpCommerce::$i->getSettings()->storeId;
+
+		list($success, $data, $error) = MailchimpCommerce::$i->chimp->delete(
+			'ecommerce/stores/' . $storeId . '/customers/' . $customer->id
+		);
+
+		if (!$success) {
+			Craft::error('[Customer ID: ' . $customer->id . '] Delete: ' . $error, 'mailchimp-commerce');
+			throw new \Exception($error);
+		}
+	}
+
 
 	// Helpers
 	// =========================================================================

@@ -163,8 +163,6 @@ class ChimpService extends Component
 	// Properties
 	// -------------------------------------------------------------------------
 
-	private static $_client;
-
 	// Methods
 	// -------------------------------------------------------------------------
 
@@ -258,9 +256,6 @@ class ChimpService extends Component
 
 	private function client ()
 	{
-		if (self::$_client)
-			return self::$_client;
-
 		$settings = MailchimpCommerce::$i->getSettings();
 
 		$apiKey     = Craft::parseEnv($settings->apiKey);
@@ -269,7 +264,7 @@ class ChimpService extends Component
 		if (!$apiKey)
 			return null;
 
-		return self::$_client = new Client([
+		return new Client([
 			'base_uri' => 'https://' . $dataCenter . '.api.mailchimp.com/3.0/',
 			'auth' => ['MailchimpCommerce', $apiKey],
 		]);
