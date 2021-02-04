@@ -3,6 +3,7 @@
 namespace ether\mc\migrations;
 
 use craft\db\Migration;
+use craft\helpers\MigrationHelper;
 
 /**
  * m190628_100926_convert_product_id_foreign_key_to_elements migration.
@@ -15,13 +16,7 @@ class m190628_100926_convert_product_id_foreign_key_to_elements extends Migratio
      */
     public function safeUp()
     {
-        $this->dropForeignKey(
-        	$this->getDb()->getForeignKeyName(
-		        '{{%mc_products_synced}}',
-		        ['productId']
-	        ),
-	        '{{%mc_products_synced}}'
-        );
+        MigrationHelper::dropForeignKeyIfExists('{{%mc_products_synced}}', ['productId'], $this);
 
         $this->addForeignKey(
 	        null,
