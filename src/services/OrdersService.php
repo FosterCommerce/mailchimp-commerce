@@ -83,7 +83,7 @@ class OrdersService extends Component
 			}
 		}
 
-		// Did that fail too? Delete all of this customer's orders from Mailchimp, then delete the customer, and finally try to sync the order from scratch
+		// Did that fail too? Delete all of this customer's orders and carts from Mailchimp, then delete the customer, and finally try to sync the order from scratch
 		if (!$success) {
 			$storeId = MailchimpCommerce::$i->getSettings()->storeId;
 			list($customerOrdersSuccess, $customerOrdersData, $customerOrdersError) = MailchimpCommerce::$i->chimp->get(
@@ -99,6 +99,35 @@ class OrdersService extends Component
 				}
 			} else {
 				Craft::error('[Customer ID: ' . $order->customer->id . '] Get orders: ' . $customerOrdersError, 'mailchimp-commerce');
+			}
+			// There is no endpoint for getting carts across stores, so we need to get the stores first and loop through them
+			list($storesSuccess, $storesData, $storesError) = MailchimpCommerce::$i->chimp->get(
+				'ecommerce/stores',
+				[
+					'count' => 1000,
+				]
+			);
+			if ($storesSuccess) {
+				foreach ($storesData['stores'] as $store) {
+					list($cartsSuccess, $cartsData, $cartsError) = MailchimpCommerce::$i->chimp->get(
+						'ecommerce/stores/' . $store['id'] . '/carts',
+						[
+							'count' => 1000,
+						]
+					);
+					if ($cartsSuccess) {
+						$customerCarts = array_filter($cartsData['carts'], function($cart) use ($order) {
+							return $cart['customer']['id'] === (string) $order->customer->id;
+						});
+						foreach ($customerCarts as $customerCart) {
+							$this->deleteOrderById($customerCart['id'], true, false, $store['id']);
+						}
+					} else {
+						Craft::error('[Customer ID: ' . $order->customer->id . '] [Store ID: ' . $store['id'] . '] Get carts: ' . $cartsError, 'mailchimp-commerce');
+					}
+				}
+			} else {
+				Craft::error('Get stores: ' . $storesError, 'mailchimp-commerce');
 			}
 			try {
 				$this->_deleteCustomer($order->customer);
