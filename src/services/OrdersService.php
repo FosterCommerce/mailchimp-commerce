@@ -383,13 +383,20 @@ class OrdersService extends Component
 			if (!$item->purchasable)
 				continue;
 
-			$li = [
-				'id' => (string) $item->id,
-				'product_id' => (string) $this->_getProduct($item->purchasable)->id,
-				'product_variant_id' => (string) $item->purchasable->id,
-				'quantity' => (int) $item->qty,
-				'price' => (float) $item->price + $item->getAdjustmentsTotalByType('prorate'),
-			];
+				$prorateTotalAmount = 0;
+				foreach ($item->getAdjustments() as $adjustment) {
+					if ($adjustment->type === 'prorate') {
+						$prorateTotalAmount += $adjustment->amount;
+					}
+				}
+	
+				$li = [
+					'id' => (string) $item->id,
+					'product_id' => (string) $this->_getProduct($item->purchasable)->id,
+					'product_variant_id' => (string) $item->purchasable->id,
+					'quantity' => (int) $item->qty,
+					'price' => (float) $item->price + $prorateTotalAmount,
+				];
 
 			if ($order->isCompleted) {
 				$li['discount'] = (float) $item->getDiscount();
